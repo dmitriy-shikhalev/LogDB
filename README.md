@@ -1,2 +1,2 @@
 # LogDB
-Column-based database by python3/async
+Column-based database on python3/async
