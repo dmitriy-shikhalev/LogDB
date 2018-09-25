@@ -1,23 +1,24 @@
 import os
-import shutil
+import asyncio
 
 from envparse import env
 
-from . import column
+from .. import column
 
+
+env.read_envfile()
 
 base_dir = env('LOGDB_BIGFILE_ROOT')
 
-
-def teardown_module(module):
-    shutil.rmtree(os.path.join(base_dir, 'test'))
+loop = asyncio.get_event_loop()
 
 
 def test_column():
-    col = column.Column('test/tmp', 'CharASCII(10)')
+    col = column.Column('pytest/tmp', 'CharASCII(10)')
     for i in range(30):
         st = chr(ord('A') + i) * 10
         col.append((i, st))
+    # print(os.listdir('data/pytest/tmp'))
     assert col[14] == (14, 'OOOOOOOOOO')
 
     try:
