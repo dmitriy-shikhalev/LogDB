@@ -15,8 +15,8 @@ def test_bigfile():
     filesystem.BigFile.filesize = 100
     bf = filesystem.BigFile('pytest/tmp')
 
-    bf[0] = b'\x1f' * 100
-    bf[100] = b'\xff'*3
+    loop.run_until_complete(bf.write_at(0, b'\x1f' * 100))
+    loop.run_until_complete(bf.write_at(100, b'\xff'*3))
 
     assert open(os.path.join(
         base_dir, 'pytest/tmp', '0.bf'
@@ -27,11 +27,11 @@ def test_bigfile():
 
     bf = filesystem.BigFile('pytest/tmp')
     assert len(
-        bf[slice(None, None)]
+        bf
     ) == 103
-    assert bf[:103] == b'\x1f' * 100 + b'\xff' * 3
+    assert loop.run_until_complete(bf.read_at(0, 104)) == b'\x1f' * 100 + b'\xff' * 3
 
-    bf[103] = b'A' * 200
+    loop.run_until_complete(bf.write_at(103, b'A' * 200))
 
     assert len(os.listdir(os.path.join(
         base_dir, 'pytest/tmp'
@@ -39,10 +39,12 @@ def test_bigfile():
 
     assert len(bf) == 103 + 200
     
-    assert bf[:] == b'\x1f' * 100 + b'\xff\xff\xff' + b'A' * 200
+    assert loop.run_until_complete(bf.read_at(0, len(bf))) == b'\x1f' * 100 + b'\xff\xff\xff' + b'A' * 200
 
-    bf[100] = b'x'
-    assert bf[100] == b'x'
+    loop.run_until_complete(bf.write_at(100, b'x'))
+    assert loop.run_until_complete(bf.read_at(100, 1)) == b'x'
 
+    loop.run_until_complete(bf.append(b'u' * 300))
+    assert len(bf) == 603
 
     filesystem.BigFile.filesize = _filesize

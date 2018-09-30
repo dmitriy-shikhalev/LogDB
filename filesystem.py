@@ -1,61 +1,79 @@
 import os
-import collections
 import asyncio
 
 import aiofiles
 from envparse import env
 
 
-loop = asyncio.get_event_loop()
-
 env.read_envfile()
 
 
-lock = asyncio.Lock()
+# class Cache:
+#     BIGFILE_CACHE_SIZE = int(env('BIGFILE_CACHE_SIZE'))
+#
+#     def __init__(self):
+#         self.size = 0
+#         self.cache = collections.OrderedDict()
+#
+#     def __getitem__(self, key):
+#         if key in self.cache:
+#             return self.cache[key]
+#
+#     def __setitem__(self, key, value):
+#         if len(value) >= self.BIGFILE_CACHE_SIZE:
+#             return
+#         while self.size + len(value) >= self.BIGFILE_CACHE_SIZE:
+#             self.cache.popitem(last=False)
+#         self.cache[key] = value
+#
+#         self.size += len(value)
+#
+#     def __contains__(self, item):
+#         return item in self.cache
 
 
-class Cache:
-    BIGFILE_CACHE_SIZE = int(env('BIGFILE_CACHE_SIZE'))
+class _BigFileOne:
+    def __init__(self, fn):
+        self.fn = fn
+        self.lock = asyncio.Lock()
+        if not os.path.exists(fn):
+            open(self.fn, 'w').close()
 
-    def __init__(self):
-        self.size = 0
-        self.cache = collections.OrderedDict()
+    async def read_at(self, at, count):
+        async with self.lock:
+            async with aiofiles.open(self.fn, 'rb') as fd:
+                await fd.seek(at)
+                return await fd.read(count)
 
-    def __getitem__(self, key):
-        if key in self.cache:
-            return self.cache[key]
+    async def write_at(self, at, bs):
+        async with self.lock:
+            async with aiofiles.open(self.fn, 'r+b') as fd:
+                await fd.seek(at)
+                await fd.write(bs)
+                await fd.flush()
 
-    def __setitem__(self, key, value):
-        if len(value) >= self.BIGFILE_CACHE_SIZE:
-            return
-        while self.size + len(value) >= self.BIGFILE_CACHE_SIZE:
-            self.cache.popitem(last=False)
-        self.cache[key] = value
-
-        self.size += len(value)
-
-    def __contains__(self, item):
-        return item in self.cache
+    # async def append(self, bs):
+    #     async with self.lock:
+    #         async with open(self.fn, 'r+b') as fd:
+    #             await fd.seek(0, -2)
+    #             await fd.write(bs)
 
 
 class BigFile:
     base_dir = env('LOGDB_BIGFILE_ROOT')
     filesize = int(env('LOGDB_BIGFILE_FILESIZE'))
 
-    async def create_if_not_exists(self):
-        with await lock:
-            dirname = self.get_path()
-            if not os.path.exists(dirname):
-                os.makedirs(dirname)
-                fn = os.path.join(dirname, '0.bf')
-                async with aiofiles.open(fn, 'w'):
-                    pass
-
     def __init__(self, name):
         self.name = name
-        loop.run_until_complete(self.create_if_not_exists())
 
-        self._cache = Cache()
+        if not os.path.exists(self.get_path()):
+            os.makedirs(self.get_path())
+
+        self.file_one_dict = dict()
+
+        self.lock = asyncio.Lock()
+
+        # self._cache = Cache()
 
     def get_path(self):
         return os.path.join(
@@ -73,63 +91,48 @@ class BigFile:
             )
         return size
 
-    async def read_from_file(self, fn, from_=None, count=None):
-        async with aiofiles.open(fn, 'rb') as fd:
-            if from_:
-                await fd.seek(from_)
-            if count is not None:
-                bs = await fd.read(count)
+    async def get_file_one(self, file_num):
+        fn = os.path.join(self.get_path(), f'{file_num}.bf')
+        async with self.lock:
+            if fn not in self.file_one_dict:
+                file_one = _BigFileOne(fn)
+                self.file_one_dict[fn] = file_one
+        return self.file_one_dict[fn]
+
+    async def read_at(self, at, count):
+        file_num_start, idx_start = divmod(at, self.filesize)
+        file_num_end, idx_end = divmod(at + count, self.filesize)
+
+        l = []
+
+        for file_num in range(file_num_start, file_num_end + 1):
+            if file_num == file_num_start:
+                at = idx_start
+                _count = min(count, self.filesize - idx_start)
             else:
-                bs = await fd.read()
-            return bs
+                at = 0
+                _count = min(count, self.filesize)
 
-    def __getitem__(self, slice_):
-        if isinstance(slice_, int):
-            slice_ = slice(slice_, slice_+1)
-        if (slice_.start, slice_.stop) in self._cache:
-            return self._cache[(slice_.start, slice_.stop)]
+            file_obj = await self.get_file_one(file_num)
+            bs = await file_obj.read_at(at, count)
+            l.append(bs)
 
-        file_num_start, idx_start = divmod(slice_.start or 0, self.filesize)
-        file_num_end, idx_end = divmod(slice_.stop or self.__len__(), self.filesize)
-        result_ls = []
-        for num in range(file_num_start, file_num_end + 1):
-            from_ = None
-            count = None
-            fn = os.path.join(
-                self.get_path(), '{:n}.bf'.format(num)
-            )
-            if num == file_num_start:
-                from_ = idx_start
-            if num == file_num_end:
-                count = (idx_end - idx_start)
-            bs = loop.run_until_complete(self.read_from_file(fn, from_, count))
-            result_ls.append(bs)
-        self._cache[(slice_.start, slice_.stop)] = b''.join(result_ls)
-        return b''.join(result_ls)
+            count -= _count
+        return b''.join(l)
 
-    async def write_to_file(self, fn, bs, idx):
-        if not os.path.exists(fn):
-            async with aiofiles.open(fn, 'w'):
-                pass
-        async with aiofiles.open(fn, 'rb+') as fd:
-            await fd.seek(idx)
-            await fd.write(bs)
+    async def write_at(self, at, bs):
+        file_num, idx = divmod(at, self.filesize)
+        at = idx
+        from_ = 0
+        till = len(bs)
+        while from_ < till:
+            count = min(till - from_, self.filesize - at)
+            file_obj = await self.get_file_one(file_num)
+            await file_obj.write_at(at, bs[from_:from_ + count])
+            at = 0
+            file_num += 1
+            from_ += count
+        return len(bs)
 
-    def __setitem__(self, idx, bs):
-        assert isinstance(idx, int)
-
-        self._cache = Cache()
-
-        num, idx_ = divmod(idx, self.filesize)
-        r = 0
-        while r < len(bs):
-            left_runner = r
-            right_runner = r + min(len(bs) - r, self.filesize - idx_)
-            fn = os.path.join(
-                self.get_path(), '{:n}.bf'.format(num)
-            )
-            loop.run_until_complete(self.write_to_file(fn, bs[left_runner:right_runner], idx_))
-
-            idx_ = 0
-            r = right_runner
-            num += 1
+    async def append(self, bs):
+        return await self.write_at(len(self), bs)
