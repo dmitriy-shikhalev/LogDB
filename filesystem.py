@@ -39,6 +39,9 @@ class _BigFileOne:
         if not os.path.exists(fn):
             open(self.fn, 'w').close()
 
+    def __len__(self):
+        return os.path.getsize(self.fn)
+
     async def read_at(self, at, count):
         async with self.lock:
             async with aiofiles.open(self.fn, 'rb') as fd:
@@ -46,17 +49,19 @@ class _BigFileOne:
                 return await fd.read(count)
 
     async def write_at(self, at, bs):
+        if at < 0 or at > len(self):
+            raise IndexError(at)
         async with self.lock:
             async with aiofiles.open(self.fn, 'r+b') as fd:
                 await fd.seek(at)
                 await fd.write(bs)
                 await fd.flush()
 
-    # async def append(self, bs):
-    #     async with self.lock:
-    #         async with open(self.fn, 'r+b') as fd:
-    #             await fd.seek(0, -2)
-    #             await fd.write(bs)
+    async def append(self, bs):
+        async with self.lock:
+            async with open(self.fn, 'r+b') as fd:
+                await fd.seek(0, -2)
+                await fd.write(bs)
 
 
 class BigFile:
@@ -71,7 +76,7 @@ class BigFile:
 
         self.file_one_dict = dict()
 
-        self.lock = asyncio.Lock()
+        self._len_lock = asyncio.Lock()
 
         # self._cache = Cache()
 
@@ -93,7 +98,7 @@ class BigFile:
 
     async def get_file_one(self, file_num):
         fn = os.path.join(self.get_path(), f'{file_num}.bf')
-        async with self.lock:
+        async with self._len_lock:
             if fn not in self.file_one_dict:
                 file_one = _BigFileOne(fn)
                 self.file_one_dict[fn] = file_one
@@ -135,4 +140,5 @@ class BigFile:
         return len(bs)
 
     async def append(self, bs):
-        return await self.write_at(len(self), bs)
+        async with self._len_lock:
+            return await self.write_at(len(self), bs)

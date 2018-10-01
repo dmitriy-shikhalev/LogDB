@@ -6,7 +6,7 @@ from ..type_ import *
 def test_ubigint():
     u1 = UBigInt.from_value(100500)
     u2 = UBigInt.from_value(100500)
-    u3 = UBigInt.from_value(-1)
+    u3 = UBigInt.from_value(1005001)
 
     assert u1 == u2
     try:
