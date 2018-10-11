@@ -1,7 +1,6 @@
 import os
 import asyncio
 from asyncio import Lock
-import threading
 import struct
 
 import aiofiles
@@ -23,10 +22,7 @@ class Column:
             with open(self._idx_fn, 'b') as fd:
                 self._idx = struct.unpack('>Q', fd.read())[0]
         except (IOError, ValueError):
-            self._idx = 0
-        # self.commit_lock = Lock()
-        # self.lock = threading.Lock()
-        # self.commit_lock = threading.Lock()
+            self._idx = -1
 
     @property
     def _idx_fn(self):
@@ -37,8 +33,8 @@ class Column:
 
     async def get_next_idx(self):
         self._idx += 1
-        async with aiofiles.open(self._idx_fn, 'w') as fd:
-            fd.write(struct.pack('>Q', self._idx))
+        async with aiofiles.open(self._idx_fn, 'wb') as fd:
+            await fd.write(struct.pack('>Q', self._idx))
         return self._idx
 
     @property
@@ -78,6 +74,7 @@ class Column:
         async with self._len_lock:
             new_index = len(self)
             await self.write_at(new_index, vals)
+            return new_index
 
 
 # class SeriesColumn(Column):

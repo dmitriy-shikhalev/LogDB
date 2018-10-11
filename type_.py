@@ -30,13 +30,19 @@ class Type:
     @property
     def value(self):
         if self._value is None:
-            self._value = struct.unpack(self.struct_character, self.bs)[0]
+            try:
+                self._value = struct.unpack(self.struct_character, self.bs)[0]
+            except struct.error:
+                raise ValueError(self.bs)
         return self._value
 
     @property
     def bs(self):
         if self._bs is None:
-            self._bs = struct.pack(self.struct_character, self.value)
+            try:
+                self._bs = struct.pack(self.struct_character, self.value)
+            except struct.error:
+                raise ValueError(self.value)
         return self._bs
 
     @classmethod
@@ -62,6 +68,11 @@ class MetaType(Type):
 class UBigInt(Type):
     size = 8  # Unsigned long
     struct_character = '>Q'
+
+
+class Double(Type):
+    size = 8
+    struct_character = '>d'
 
 
 class CharASCII(MetaType):

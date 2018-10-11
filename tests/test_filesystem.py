@@ -29,7 +29,7 @@ def test_bigfile():
     assert len(
         bf
     ) == 103
-    assert loop.run_until_complete(bf.read_at(0, 104)) == b'\x1f' * 100 + b'\xff' * 3
+    assert loop.run_until_complete(bf.read_at(0, 103)) == b'\x1f' * 100 + b'\xff' * 3
 
     loop.run_until_complete(bf.write_at(103, b'A' * 200))
 

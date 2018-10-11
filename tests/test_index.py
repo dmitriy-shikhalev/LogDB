@@ -1,21 +1,34 @@
 import random
+import asyncio
 
 from .. import column
 from .. import index
 
 
+loop = asyncio.get_event_loop()
+
+
+COUNT_OF_ELEMENTS = 20
+
+
 def test_index():
-    col = column.Column('pytest/tmp', 'Double')
+    col = column.Column('pytest/tmp', ('UBigInt', 'Double',))
     idx_col = index.Index(col)
 
-    test_count = 1
+    test_count = COUNT_OF_ELEMENTS
 
     for i in range(test_count):
-        i = col.append((i, random.random()))
+        i = loop.run_until_complete(col.append((i, random.random())))
         idx_col.add(i)
-        # idx_col.check_no_loop()
-    for tmp in idx_col:
-        pass
 
-    assert idx_col[0][1][1] == test_count
-    assert idx_col[0][1][0] == 0
+    assert loop.run_until_complete(idx_col.read_at(0))[1] == COUNT_OF_ELEMENTS
+    assert loop.run_until_complete(idx_col.read_at(0))[0] == 0
+    assert len(idx_col) == COUNT_OF_ELEMENTS
+    l = list(idx_col.generator())
+    assert set(l) == set(list(range(COUNT_OF_ELEMENTS)))
+    l_res = []
+    for idx in l:
+        l_res.append(
+            loop.run_until_complete(col.read_at(idx))[1]
+        )
+    assert l_res == sorted(l_res)

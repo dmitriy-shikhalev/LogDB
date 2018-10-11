@@ -77,6 +77,7 @@ class BigFile:
         self.file_one_dict = dict()
 
         self._len_lock = asyncio.Lock()
+        self._len = len(self)
 
         # self._cache = Cache()
 
@@ -105,6 +106,8 @@ class BigFile:
         return self.file_one_dict[fn]
 
     async def read_at(self, at, count):
+        if at + count > self._len:
+            raise IndexError(at, count, self._len)
         file_num_start, idx_start = divmod(at, self.filesize)
         file_num_end, idx_end = divmod(at + count, self.filesize)
 
@@ -126,6 +129,9 @@ class BigFile:
         return b''.join(l)
 
     async def write_at(self, at, bs):
+        async with self._len_lock:
+            self._len = max(at + len(bs), self._len)
+
         file_num, idx = divmod(at, self.filesize)
         at = idx
         from_ = 0
@@ -141,4 +147,5 @@ class BigFile:
 
     async def append(self, bs):
         async with self._len_lock:
-            return await self.write_at(len(self), bs)
+            self._len += len(bs)
+        return await self.write_at(len(self), bs)
