@@ -83,7 +83,7 @@ def add_column(table_name, name, type_):
     if name in col_names:
         raise ColumnAlreadyExists(name, table_name)
 
-    _ = column.Column(f'{table_name}/{name}_{type_}', type_)
+    _ = column.Column(f'{table_name}/{name}_{type_}', ('UBigInt', type_))
 
 
 def drop_column(table_name, name):
@@ -108,7 +108,6 @@ class Table:
     def __init__(self, name):
         self.name = name
         self.columns = {}
-        self.main_index = column.SeriesColumn(f'{self.name}/index_UBigInt')
         self.indexes = {}
         for name, type_ in self.get_columns():
             if name == 'index' and type_ != 'UBigInt':
@@ -121,10 +120,21 @@ class Table:
                 for dirname in os.listdir(os.path.join(base_dir, self.name))
             ):
                 raise ColumnExistsWithAnotherType(self.name, name, type_)
-            self.columns[name] = column.Column(f'{self.name}/{name}', type_)
+            self.columns[name] = column.Column(f'{self.name}/{name}', ('UBigInt', type_))
             idx_name = f'{name}.idx'
             if os.path.exists(os.path.join(base_dir, self.name, idx_name)):
                 self.indexes[name] = index.Index(self.columns[name])
+
+        self._idx = len(self)
+
+    def __len__(self):
+        return max(
+            len(col) for col in self.columns.values()
+        )
+
+    def get_next_idx(self):
+        idx, self._idx = self._idx, self._idx + 1
+        return idx
 
     def get_columns(self):
         for dirname in os.listdir(
@@ -133,13 +143,14 @@ class Table:
             name, type_ = dirname.split('_')
             yield name, type_
 
-    def add(self, **kwargs):
-        idx = self.main_index.get_next_idx()
+    async def add(self, **kwargs):
+        idx = self.get_next_idx()
         for k, v in kwargs.items():
-            print('k,v', k,v, idx, v)
+            if v is None:
+                continue
             if k not in self.columns:
                 raise UnknownColumn(k, self.columns.keys())
-            self.columns[k].append((idx, v))
+            await self.columns[k].append((idx, v))
             if k in self.indexes:
                 self.indexes[k].add(idx)
 

@@ -417,7 +417,7 @@ class AVLTree:
 
         while True:
             idx_vals = self.recipient[idx]
-            if val <= self.base[idx_vals[0]]:
+            if val <= self.base[idx_vals[0]][1]:
                 idx_prev = idx
                 idx = idx_vals[2]
                 if idx is None:
@@ -440,7 +440,7 @@ class AVLTree:
 
         while True:
             idx_vals = self.recipient[idx]
-            if val >= self.base[idx_vals[0]]:
+            if val >= self.base[idx_vals[0]][1]:
                 idx_prev = idx
                 idx = idx_vals[3]
                 if idx is None:

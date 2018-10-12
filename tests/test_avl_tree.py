@@ -5,7 +5,7 @@ from .. import avl_tree
 
 def test_avl_tree():
     COUNT_OF_ELEMENTS = 1000
-    l = [i for i in range(COUNT_OF_ELEMENTS)]
+    l = [(None, i) for i in range(COUNT_OF_ELEMENTS)]
 
     class _TestList(list):
         def append(self, element):
@@ -28,15 +28,15 @@ def test_avl_tree():
 
     assert tree.get_left(None) == 0
     assert tree.get_left(-100) == 0
-    assert l[tree.get_left(0)] == 0
+    assert l[tree.get_left(0)][1] == 0
     assert tree.get_left(COUNT_OF_ELEMENTS) is None
-    assert l[tree.get_left(COUNT_OF_ELEMENTS - 1)] == COUNT_OF_ELEMENTS - 1
+    assert l[tree.get_left(COUNT_OF_ELEMENTS - 1)][1] == COUNT_OF_ELEMENTS - 1
 
     assert tree.get_right(None) == COUNT_OF_ELEMENTS - 1
     assert tree.get_right(-100) is None
-    assert l[tree.get_right(0)] == 0
+    assert l[tree.get_right(0)][1] == 0
     assert tree.get_right(COUNT_OF_ELEMENTS) == COUNT_OF_ELEMENTS - 1
-    assert l[tree.get_right(COUNT_OF_ELEMENTS - 1)] == COUNT_OF_ELEMENTS - 1
+    assert l[tree.get_right(COUNT_OF_ELEMENTS - 1)][1] == COUNT_OF_ELEMENTS - 1
 
     assert list(tree.generator(2,7)) == [2, 3, 4, 5, 6, 7]
     assert list(tree.generator()) == list(range(COUNT_OF_ELEMENTS))

@@ -18,24 +18,6 @@ class Column:
         self.types = [type_.get_type_by_str(type_name)
                       for type_name in types]
         self._len_lock = Lock()
-        try:
-            with open(self._idx_fn, 'b') as fd:
-                self._idx = struct.unpack('>Q', fd.read())[0]
-        except (IOError, ValueError):
-            self._idx = -1
-
-    @property
-    def _idx_fn(self):
-        return os.path.join(
-            self.fs.get_path(),
-            '_idx'
-        )
-
-    async def get_next_idx(self):
-        self._idx += 1
-        async with aiofiles.open(self._idx_fn, 'wb') as fd:
-            await fd.write(struct.pack('>Q', self._idx))
-        return self._idx
 
     @property
     def size(self):
