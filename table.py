@@ -69,7 +69,7 @@ def drop_table(name):
 def add_column(table_name, name, type_):
     if table_name not in os.listdir(base_dir):
         raise TableNotExists(table_name)
-    check_name((name))
+    check_name(name)
     existed_cols = os.listdir(os.path.join(
         base_dir,
         table_name,
@@ -97,6 +97,42 @@ def drop_column(table_name, name):
     )
     if name not in columns:
         raise ColumnNotExists(name, table_name)
+    shutil.rmtree(os.path.join(table_dir, f'{name}_{columns[name]}'))
+    try:
+        shutil.rmtree(os.path.join(table_dir, f'{name}_{columns[name]}.idx'))
+    except FileNotFoundError:
+        pass
+
+
+def add_index(table_name, name):
+    check_name(name)
+    ls = os.listdir(
+        os.path.join(
+            base_dir,
+            table_name
+        )
+    )
+    for l in ls:
+        if l.startswith(f'{name}'):
+            type_ = l.split('_')[1]
+    col = column.Column(f'{table_name}/{name}_{type_}', ('UBigInt', type_))
+    _ = index.Index(col)
+
+
+def drop_index(table_name, name):
+    if table_name not in os.listdir(base_dir):
+        raise TableNotExists(table_name, os.listdir(base_dir))
+    check_name(name)
+    table_dir = os.path.join(base_dir, table_name)
+    print('cols', os.listdir(table_dir))
+    columns = dict(
+        dirname.split('_')
+        for dirname in os.listdir(table_dir)
+        if dirname.endswith('.idx')
+    )
+    print('cols', columns)
+    if name not in columns:
+        raise ColumnNotExists(name + '.idx', table_name)
     shutil.rmtree(os.path.join(table_dir, f'{name}_{columns[name]}'))
     try:
         shutil.rmtree(os.path.join(table_dir, f'{name}_{columns[name]}.idx'))

@@ -1,5 +1,6 @@
 import os
 import asyncio
+import random
 
 from .. import table
 from .. import type_
@@ -26,6 +27,8 @@ def test_create_table():
         pass
     else:
         assert False, ('Must be exception', table.BadName)
+
+    table.drop_table('pytestcreatetable')
 
 
 def test_drop_table():
@@ -70,6 +73,8 @@ def test_add_column():
     else:
         assert False, ('Must be exception', table.BadName)
 
+    table.drop_table(tablename)
+
 
 def test_drop_column():
     tablename = 'pytest3'
@@ -92,13 +97,28 @@ def test_drop_column():
     else:
         assert False, ('Must be error', table.ColumnNotExists)
 
+    table.drop_table(tablename)
+
 
 def test_add_index():
-    pass
+    tablename = 'pytest4'
+    table.create_table(tablename)
+    table.add_column(tablename, 't1', 'UBigInt')
+
+    table.add_index(tablename, 't1')
+    assert os.path.exists(f'{table.base_dir}/{tablename}/t1_UBigInt.idx')
+
+    table.drop_table(tablename)
+
 
 
 def test_drop_index():
-    pass
+    tablename = 'pytest5'
+    table.create_table(tablename)
+    table.add_column(tablename, 't1', 'UBigInt')
+    table.add_index(tablename, 't1')
+    table.drop_index(tablename, 't1')
+    table.drop_table(tablename)
 
 
 def test_table():
@@ -125,4 +145,8 @@ def test_table():
     else:
         assert False, ('Must be error',table.UnknownColumn)
 
-    loop.run_until_complete(t.add(a=2))
+    for i in range(1000):
+        loop.run_until_complete(t.add(a=random.randint(0, 100000)))
+
+def test_table_filter_select():
+    pass  # TODO

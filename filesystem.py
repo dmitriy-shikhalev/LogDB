@@ -38,30 +38,38 @@ class _BigFileOne:
         self.lock = asyncio.Lock()
         if not os.path.exists(fn):
             open(self.fn, 'w').close()
+        self._current_pos = 0
+        self._fh = open(self.fn, 'r+b')
 
     def __len__(self):
         return os.path.getsize(self.fn)
 
     async def read_at(self, at, count):
         async with self.lock:
-            async with aiofiles.open(self.fn, 'rb') as fd:
-                await fd.seek(at)
-                return await fd.read(count)
+            if self._current_pos != at:
+                self._fh.seek(at)
+                self._current_pos = at
+            self._current_pos += count
+            return self._fh.read(count)
 
     async def write_at(self, at, bs):
         if at < 0 or at > len(self):
             raise IndexError(at)
         async with self.lock:
-            async with aiofiles.open(self.fn, 'r+b') as fd:
-                await fd.seek(at)
-                await fd.write(bs)
-                await fd.flush()
+            if self._current_pos != at:
+                self._fh.seek(at)
+                self._current_pos = at
+            self._fh.write(bs)
+            self._fh.flush()
+            self._current_pos += len(bs)
 
-    async def append(self, bs):
-        async with self.lock:
-            async with open(self.fn, 'r+b') as fd:
-                await fd.seek(0, -2)
-                await fd.write(bs)
+    # async def append(self, bs):
+    #     async with self.lock:
+    #         async with open(self.fn, 'r+b') as fd:
+    #             await fd.seek(0, -2)
+    #             await fd.write(bs)
+    #             raise Exception(await fd.talk())
+    #             self._current_pos = await fd.talk()
 
 
 class BigFile:

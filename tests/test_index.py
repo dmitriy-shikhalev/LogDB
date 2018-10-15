@@ -8,7 +8,7 @@ from .. import index
 loop = asyncio.get_event_loop()
 
 
-COUNT_OF_ELEMENTS = 20
+COUNT_OF_ELEMENTS = 100
 
 
 def test_index():
