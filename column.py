@@ -58,6 +58,16 @@ class Column:
             await self.write_at(new_index, vals)
             return new_index
 
+    async def get_last_id(self):
+        if len(self) == 0:
+            return -1
+        vals = await self.read_at(len(self) - 1)
+        return vals[0]
+
+    def generator(self):
+        for idx in range(len(self)):
+            yield idx
+
 
 # class SeriesColumn(Column):
 #     def __init__(self, name):
