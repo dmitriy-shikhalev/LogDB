@@ -12,9 +12,16 @@ base_dir = os.path.abspath(env('LOGDB_BIGFILE_ROOT'))
 
 @pytest.fixture(scope='module', autouse=True)
 def teardown_module():
-    try:
-        for name in os.listdir(base_dir):
-            if name.startswith('pytest'):
-                shutil.rmtree(os.path.join(base_dir, name))
-    except Exception as err:
-        pass
+    for name in os.listdir(base_dir):
+        if name.startswith('test'):
+            full_path = os.path.join(
+                base_dir,
+                name
+            )
+            if os.path.isdir(full_path):
+                shutil.rmtree(full_path)
+            else:
+                os.remove(full_path)
+                ls = os.listdir(base_dir)
+                if ls:
+                    raise Exception(ls)
