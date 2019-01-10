@@ -1,0 +1,17 @@
+{
+  "base_dir": "/tmp/test_log_db",
+  "tables": {
+    "test_table": {
+      "a": {
+        "type": "LongLong",
+        "is_distkey": true
+      },
+      "b": {
+        "type": "ULongLong",
+        "is_distkey": false
+      }
+    }
+  },
+  "host": "localhost",
+  "port": "3121"
+}
