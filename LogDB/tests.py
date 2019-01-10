@@ -16,11 +16,11 @@ import requests
 loop = asyncio.new_event_loop()
 asyncio.set_event_loop(loop)
 
-import filesystem
-import column
-import errors
-import table
-import type_
+from . import filesystem
+from . import column
+from . import errors
+from . import table
+from . import type_
 
 
 @pytest.fixture()
@@ -374,8 +374,9 @@ def create_server_process():
         os.mkdir('/tmp/test_log_db/test_table')
         process = subprocess.Popen([
             'python',
+            '-m',
             'LogDB',
-            'LogDB/config.conf.template'
+            'LogDB/config.conf.template',
         ], stdout=sys.stdout)
         try:
             time.sleep(2)
