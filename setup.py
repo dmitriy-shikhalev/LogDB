@@ -20,7 +20,7 @@ setuptools.setup(
     ],
     install_requires=[
         'aiofiles==0.4.0',
-        'aiohttp==3.5.1',
+        'aiohttp==3.7.4',
         'async-timeout==3.0.1',
         'atomicwrites==1.2.1',
         'attrs==18.2.0',
