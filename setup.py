@@ -39,7 +39,7 @@ setuptools.setup(
         'prompt-toolkit==2.0.7',
         'ptyprocess==0.6.0',
         'py==1.7.0',
-        'Pygments==2.3.1',
+        'Pygments==2.7.4',
         'pytest==4.0.2',
         'requests==2.21.0',
         'six==1.12.0',
