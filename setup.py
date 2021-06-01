@@ -44,7 +44,7 @@ setuptools.setup(
         'requests==2.21.0',
         'six==1.12.0',
         'traitlets==4.3.2',
-        'urllib3==1.24.1',
+        'urllib3==1.26.5',
         'wcwidth==0.1.7',
         'yarl==1.3.0',
     ]
