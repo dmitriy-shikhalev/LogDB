@@ -25,7 +25,7 @@ setuptools.setup(
         'atomicwrites==1.2.1',
         'attrs==18.2.0',
         'backcall==0.1.0',
-        'certifi==2018.11.29',
+        'certifi==2022.12.7',
         'chardet==3.0.4',
         'decorator==4.3.0',
         'idna==2.8',
